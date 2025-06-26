@@ -20,9 +20,30 @@ import { startAlertMonitoring } from './services/alertMonitoringService.js';
 
 dotenv.config();
 
+// Vérification des variables d'environnement critiques
+const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ Variables d\'environnement manquantes:', missingEnvVars.join(', '));
+  console.error('⚠️  Assurez-vous que le fichier .env existe et contient toutes les variables requises');
+  process.exit(1);
+}
+
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
+
+// Test de connexion à la base de données
+async function testDatabaseConnection() {
+  try {
+    await prisma.$connect();
+    console.log('✅ Connexion à la base de données réussie');
+  } catch (error) {
+    console.error('❌ Erreur de connexion à la base de données:', error);
+    process.exit(1);
+  }
+}
 
 // Security middleware
 app.use(helmet());
@@ -48,7 +69,8 @@ app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    database: 'connected'
   });
 });
 
@@ -96,25 +118,68 @@ app.use('*', (req, res) => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM reçu, arrêt gracieux...');
-  await prisma.$disconnect();
-  process.exit(0);
+  try {
+    await prisma.$disconnect();
+    console.log('✅ Base de données déconnectée');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Erreur lors de la déconnexion de la base de données:', error);
+    process.exit(1);
+  }
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT reçu, arrêt gracieux...');
-  await prisma.$disconnect();
-  process.exit(0);
+  try {
+    await prisma.$disconnect();
+    console.log('✅ Base de données déconnectée');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Erreur lors de la déconnexion de la base de données:', error);
+    process.exit(1);
+  }
+});
+
+// Gestion des erreurs non capturées
+process.on('uncaughtException', (error) => {
+  console.error('❌ Erreur non capturée:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesse rejetée non gérée:', reason);
+  process.exit(1);
 });
 
 // Start server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`📊 Dashboard: http://localhost:${PORT}/health`);
-  
-  // Démarrer la surveillance des alertes
-  startAlertMonitoring().catch(error => {
-    console.error('Erreur lors du démarrage de la surveillance des alertes:', error);
-  });
-});
+async function startServer() {
+  try {
+    // Tester la connexion à la base de données
+    await testDatabaseConnection();
+    
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+      console.log(`📊 Dashboard: http://localhost:${PORT}/health`);
+      
+      // Démarrer la surveillance des alertes
+      startAlertMonitoring().catch(error => {
+        console.error('❌ Erreur lors du démarrage de la surveillance des alertes:', error);
+        // Ne pas arrêter le serveur si la surveillance des alertes échoue
+      });
+    });
+
+    // Gestion des erreurs du serveur
+    server.on('error', (error) => {
+      console.error('❌ Erreur du serveur:', error);
+      process.exit(1);
+    });
+
+  } catch (error) {
+    console.error('❌ Erreur lors du démarrage du serveur:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 export default app;

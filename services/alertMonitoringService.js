@@ -13,14 +13,38 @@ const WATER_LEVEL_THRESHOLDS = {
 // Intervalle de vérification (en millisecondes)
 const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
+let monitoringInterval = null;
+
 export async function startAlertMonitoring() {
-  console.log('Démarrage de la surveillance des alertes...');
-  
-  // Vérification initiale
-  await checkAllSites();
-  
-  // Mise en place de la vérification périodique
-  setInterval(checkAllSites, CHECK_INTERVAL);
+  try {
+    console.log('🔄 Démarrage de la surveillance des alertes...');
+    
+    // Vérification initiale
+    await checkAllSites();
+    
+    // Mise en place de la vérification périodique
+    monitoringInterval = setInterval(async () => {
+      try {
+        await checkAllSites();
+      } catch (error) {
+        console.error('❌ Erreur lors de la vérification périodique des alertes:', error);
+        // Ne pas arrêter l'intervalle en cas d'erreur
+      }
+    }, CHECK_INTERVAL);
+    
+    console.log('✅ Surveillance des alertes démarrée avec succès');
+  } catch (error) {
+    console.error('❌ Erreur lors du démarrage de la surveillance des alertes:', error);
+    throw error;
+  }
+}
+
+export function stopAlertMonitoring() {
+  if (monitoringInterval) {
+    clearInterval(monitoringInterval);
+    monitoringInterval = null;
+    console.log('🛑 Surveillance des alertes arrêtée');
+  }
 }
 
 async function checkAllSites() {
@@ -34,11 +58,19 @@ async function checkAllSites() {
       }
     });
 
+    console.log(`🔍 Vérification de ${sites.length} sites...`);
+
     for (const site of sites) {
-      await checkSiteAlerts(site);
+      try {
+        await checkSiteAlerts(site);
+      } catch (error) {
+        console.error(`❌ Erreur lors de la vérification du site ${site.id}:`, error);
+        // Continuer avec les autres sites
+      }
     }
   } catch (error) {
-    console.error('Erreur lors de la vérification des sites:', error);
+    console.error('❌ Erreur lors de la récupération des sites:', error);
+    throw error;
   }
 }
 
@@ -59,80 +91,108 @@ async function checkSiteAlerts(site) {
     // Vérification des maintenances
     await checkMaintenance(site);
   } catch (error) {
-    console.error(`Erreur lors de la vérification des alertes pour le site ${site.id}:`, error);
+    console.error(`❌ Erreur lors de la vérification des alertes pour le site ${site.id}:`, error);
+    throw error;
   }
 }
 
 async function checkWaterLevel(site) {
-  const currentLevel = site.currentLevel;
-  const capacity = site.reservoirCapacity;
-  const percentage = (currentLevel / capacity) * 100;
+  try {
+    const currentLevel = site.currentLevel || 0;
+    const capacity = site.reservoirCapacity || 100;
+    const percentage = (currentLevel / capacity) * 100;
 
-  // Vérifier si une alerte de niveau bas existe déjà
-  const existingAlert = await prisma.alert.findFirst({
-    where: {
-      siteId: site.id,
-      type: AlertType.LOW_WATER_LEVEL,
-      isActive: true
+    // Vérifier si une alerte de niveau bas existe déjà
+    const existingAlert = await prisma.alert.findFirst({
+      where: {
+        siteId: site.id,
+        type: AlertType.LOW_WATER_LEVEL,
+        isActive: true
+      }
+    });
+
+    if (percentage <= WATER_LEVEL_THRESHOLDS.CRITICAL && !existingAlert) {
+      await createAlert(site, {
+        type: AlertType.LOW_WATER_LEVEL,
+        level: AlertLevel.CRITICAL,
+        message: `Niveau d'eau critique (${percentage.toFixed(1)}%)`
+      });
+    } else if (percentage <= WATER_LEVEL_THRESHOLDS.WARNING && !existingAlert) {
+      await createAlert(site, {
+        type: AlertType.LOW_WATER_LEVEL,
+        level: AlertLevel.WARNING,
+        message: `Niveau d'eau bas (${percentage.toFixed(1)}%)`
+      });
     }
-  });
-
-  if (percentage <= WATER_LEVEL_THRESHOLDS.CRITICAL && !existingAlert) {
-    await createAlert(site, {
-      type: AlertType.LOW_WATER_LEVEL,
-      level: AlertLevel.CRITICAL,
-      message: `Niveau d'eau critique (${percentage.toFixed(1)}%)`
-    });
-  } else if (percentage <= WATER_LEVEL_THRESHOLDS.WARNING && !existingAlert) {
-    await createAlert(site, {
-      type: AlertType.LOW_WATER_LEVEL,
-      level: AlertLevel.WARNING,
-      message: `Niveau d'eau bas (${percentage.toFixed(1)}%)`
-    });
+  } catch (error) {
+    console.error(`❌ Erreur lors de la vérification du niveau d'eau pour le site ${site.id}:`, error);
+    throw error;
   }
 }
 
 async function checkSensors(site) {
-  // Vérifier les dernières lectures des capteurs
-  const lastReadings = site.waterLevels[0];
-  
-  if (!lastReadings || (Date.now() - new Date(lastReadings.timestamp).getTime() > 30 * 60 * 1000)) {
-    await createAlert(site, {
-      type: AlertType.SENSOR_FAILURE,
-      level: AlertLevel.WARNING,
-      message: 'Dysfonctionnement des capteurs de niveau d\'eau'
-    });
+  try {
+    // Vérifier les dernières lectures des capteurs
+    const lastReadings = site.waterLevels?.[0];
+    
+    if (!lastReadings || (Date.now() - new Date(lastReadings.timestamp).getTime() > 30 * 60 * 1000)) {
+      await createAlert(site, {
+        type: AlertType.SENSOR_FAILURE,
+        level: AlertLevel.WARNING,
+        message: 'Dysfonctionnement des capteurs de niveau d\'eau'
+      });
+    }
+  } catch (error) {
+    console.error(`❌ Erreur lors de la vérification des capteurs pour le site ${site.id}:`, error);
+    throw error;
   }
 }
 
 async function checkPumps(site) {
-  // Logique de vérification des pompes
-  // À implémenter selon les besoins spécifiques
+  try {
+    // Logique de vérification des pompes
+    // À implémenter selon les besoins spécifiques
+    // Pour l'instant, pas d'implémentation pour éviter les erreurs
+  } catch (error) {
+    console.error(`❌ Erreur lors de la vérification des pompes pour le site ${site.id}:`, error);
+    throw error;
+  }
 }
 
 async function checkLeaks(site) {
-  // Logique de détection des fuites
-  // À implémenter selon les besoins spécifiques
+  try {
+    // Logique de détection des fuites
+    // À implémenter selon les besoins spécifiques
+    // Pour l'instant, pas d'implémentation pour éviter les erreurs
+  } catch (error) {
+    console.error(`❌ Erreur lors de la vérification des fuites pour le site ${site.id}:`, error);
+    throw error;
+  }
 }
 
 async function checkMaintenance(site) {
-  // Vérifier les maintenances préventives à venir
-  const upcomingMaintenance = await prisma.maintenance.findFirst({
-    where: {
-      siteId: site.id,
-      status: 'SCHEDULED',
-      scheduledAt: {
-        lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+  try {
+    // Vérifier les maintenances préventives à venir
+    const upcomingMaintenance = await prisma.maintenance.findFirst({
+      where: {
+        siteId: site.id,
+        status: 'SCHEDULED',
+        scheduledAt: {
+          lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+        }
       }
-    }
-  });
-
-  if (upcomingMaintenance) {
-    await createAlert(site, {
-      type: AlertType.MAINTENANCE_DUE,
-      level: AlertLevel.INFO,
-      message: `Maintenance prévue le ${new Date(upcomingMaintenance.scheduledAt).toLocaleDateString('fr-FR')}`
     });
+
+    if (upcomingMaintenance) {
+      await createAlert(site, {
+        type: AlertType.MAINTENANCE_DUE,
+        level: AlertLevel.INFO,
+        message: `Maintenance prévue le ${new Date(upcomingMaintenance.scheduledAt).toLocaleDateString('fr-FR')}`
+      });
+    }
+  } catch (error) {
+    console.error(`❌ Erreur lors de la vérification des maintenances pour le site ${site.id}:`, error);
+    throw error;
   }
 }
 
@@ -148,12 +208,19 @@ async function createAlert(site, alertData) {
       }
     });
 
+    console.log(`🚨 Alerte créée pour le site ${site.id}: ${alertData.type}`);
+
     // Envoyer les notifications
-    await sendAlertNotifications(alert);
+    try {
+      await sendAlertNotifications(alert);
+    } catch (notificationError) {
+      console.error('❌ Erreur lors de l\'envoi des notifications:', notificationError);
+      // Ne pas faire échouer la création de l'alerte si les notifications échouent
+    }
 
     return alert;
   } catch (error) {
-    console.error('Erreur lors de la création de l\'alerte:', error);
+    console.error('❌ Erreur lors de la création de l\'alerte:', error);
     throw error;
   }
 } 
