@@ -70,14 +70,27 @@ ALERT_CHECK_INTERVAL=300000
 ## 📊 Endpoints de santé
 
 - `GET /health` : Vérification de l'état du serveur
+- `GET /api/test-cors` : Test de la configuration CORS
 - `GET /api/*` : Endpoints de l'API
 
 ## 🔒 Sécurité
 
 - Helmet.js pour la sécurité des en-têtes HTTP
 - Rate limiting pour prévenir les attaques par déni de service
-- CORS configuré pour le frontend spécifié
+- CORS configuré pour les origines autorisées :
+  - `https://aquoflwo.vercel.app` (production)
+  - `http://localhost:3000` (développement)
+  - `http://localhost:3001` (développement)
 - Validation des données avec express-validator
+
+## 🌐 Configuration CORS
+
+L'application est configurée pour accepter les requêtes depuis :
+- `https://aquoflwo.vercel.app` (frontend de production)
+- `http://localhost:3000` (développement local)
+- `http://localhost:3001` (développement local)
+
+Pour ajouter une nouvelle origine autorisée, modifiez le tableau `allowedOrigins` dans `index.js`.
 
 ## 📝 Logs
 

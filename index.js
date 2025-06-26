@@ -47,10 +47,49 @@ async function testDatabaseConnection() {
 
 // Security middleware
 app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'https://aquoflwo.vercel.app/',
-  credentials: true
-}));
+
+// Configuration CORS améliorée
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Liste des origines autorisées
+    const allowedOrigins = [
+      'https://aquoflwo.vercel.app',
+      'https://aquoflwo.vercel.app/',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://127.0.0.1:3000',
+      'http://127.0.0.1:3001'
+    ];
+    
+    // Permettre les requêtes sans origine (applications mobiles, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Vérifier si l'origine est autorisée
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log('🚫 Origine non autorisée:', origin);
+      callback(new Error('Non autorisé par CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
+
+// Middleware pour gérer les requêtes OPTIONS (preflight)
+app.options('*', cors(corsOptions));
+
+// Middleware pour logger les requêtes CORS
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    console.log('🔍 Requête OPTIONS reçue depuis:', req.headers.origin);
+  }
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
@@ -71,6 +110,15 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     database: 'connected'
+  });
+});
+
+// Test CORS endpoint
+app.get('/api/test-cors', (req, res) => {
+  res.json({
+    message: 'CORS fonctionne correctement',
+    origin: req.headers.origin,
+    timestamp: new Date().toISOString()
   });
 });
 
