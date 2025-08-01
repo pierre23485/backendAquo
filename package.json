@@ -6,6 +6,11 @@
     "dev": "nodemon index.js",
     "start": "node index.js",
     "create-admin": "node scripts/createAdmin.js",
+    "create-technician": "node scripts/createTechnician.js",
+    "test-technician": "node scripts/testTechnicianAPI.js",
+    "test-backend": "node scripts/testBackend.js",
+    "test-notifications": "node scripts/testNotificationRoutes.js",
+    "init-settings": "node scripts/initializeSettings.js",
     "db:seed": "node seed.js"
   },
   "dependencies": {
@@ -19,7 +24,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "mqtt": "^5.13.1",
-    "nodemailer": "^7.0.3"
+    "nodemailer": "^7.0.3",
+    "node-fetch": "^3.3.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.3",

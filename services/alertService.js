@@ -152,7 +152,7 @@ const checkSensorFailures = async () => {
       });
 
       if (!recentAlert) {
-        console.log(`⚠️ Possible panne de capteur détectée pour ${site.name}`);
+        console.log(`Possible panne de capteur détectée pour ${site.name}`);
         
         // Create alert record
         await prisma.alert.create({
@@ -185,10 +185,8 @@ export const createManualAlert = async (siteId, type, message, level = 'INFO') =
       }
     });
 
-    console.log(`🔔 Alerte manuelle créée pour le site ${siteId}:`, message);
     return alert;
   } catch (error) {
-    console.error('Erreur lors de la création d\'alerte manuelle:', error);
     throw error;
   }
 };
@@ -203,7 +201,6 @@ export const resolveAlert = async (alertId) => {
       }
     });
 
-    console.log(`✅ Alerte résolue:`, alert.id);
     return alert;
   } catch (error) {
     console.error('Erreur lors de la résolution d\'alerte:', error);

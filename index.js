@@ -14,6 +14,9 @@ import notificationRoutes from './routes/notifications.js';
 import announcementRoutes from './routes/announcements.js';
 import dashboardRoutes from './routes/dashboard.js';
 import alertRoutes from './routes/alerts.js';
+import sensorsRouter from './routes/sensors.js';
+import settingsRoutes from './routes/settings.js';
+import refillReportsRoutes from './routes/refill-reports.js';
 
 // Import services
 import { startAlertMonitoring } from './services/alertMonitoringService.js';
@@ -58,7 +61,8 @@ const corsOptions = {
       'http://localhost:3000',
       'http://localhost:3001',
       'http://127.0.0.1:3000',
-      'http://127.0.0.1:3001'
+      'http://127.0.0.1:3001',
+      'http://localhost:5173'
     ];
     
     // Permettre les requêtes sans origine (applications mobiles, Postman, etc.)
@@ -131,6 +135,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alerts', alertRoutes);
+app.use('/api/sensors', sensorsRouter);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/refill-reports', refillReportsRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

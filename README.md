@@ -36,6 +36,52 @@ npm start
 - `npm run setup-env` : Création du fichier .env
 - `npm run create-admin` : Création d'un utilisateur administrateur
 - `npm run db:seed` : Peuplement de la base de données
+- `npm run create-technician` : Création d'un utilisateur technicien de test
+- `npm run test-technician` : Test des fonctionnalités des techniciens
+
+## 👨‍🔧 Fonctionnalités des Techniciens de Maintenance
+
+Les techniciens de maintenance ont accès à des fonctionnalités spécialisées pour gérer le matériel et résoudre les problèmes techniques :
+
+### 🔧 Gestion des Capteurs
+- **Lister tous les capteurs** : `GET /api/sensors`
+- **Obtenir un capteur spécifique** : `GET /api/sensors/:sensorId`
+- **Ajouter un nouveau capteur** : `POST /api/sensors`
+- **Modifier un capteur** : `PATCH /api/sensors/:sensorId`
+- **Supprimer un capteur** : `DELETE /api/sensors/:sensorId`
+
+### ⚙️ Configuration des Capteurs
+- **Créer/Modifier la configuration** : `POST /api/sensors/:sensorId/config`
+- **Modifier la configuration** : `PATCH /api/sensors/:sensorId/config`
+- **Supprimer la configuration** : `DELETE /api/sensors/:sensorId/config`
+
+### 🔍 Diagnostics et Tests
+- **Ajouter un diagnostic** : `POST /api/sensors/:sensorId/diagnostics`
+- **Consulter les diagnostics** : `GET /api/sensors/:sensorId/diagnostics`
+
+### 📋 Rapports de Maintenance
+- **Créer un rapport** : `POST /api/sensors/:sensorId/maintenance`
+- **Consulter les rapports** : `GET /api/sensors/:sensorId/maintenance`
+
+### 📊 Statistiques et Alertes
+- **Vue d'ensemble** : `GET /api/sensors/stats/overview`
+- **Capteurs nécessitant une attention** : `GET /api/sensors/alerts/attention-needed`
+
+### 🧪 Tests des Fonctionnalités
+
+Pour tester les fonctionnalités des techniciens :
+
+1. **Créer un technicien de test** :
+```bash
+npm run create-technician
+```
+
+2. **Tester les API** :
+```bash
+npm run test-technician
+```
+
+3. **Documentation complète** : Voir `TECHNICIAN_API.md`
 
 ## 🐛 Résolution des problèmes
 
@@ -82,6 +128,8 @@ ALERT_CHECK_INTERVAL=300000
   - `http://localhost:3000` (développement)
   - `http://localhost:3001` (développement)
 - Validation des données avec express-validator
+- Authentification JWT pour toutes les routes protégées
+- Contrôle d'accès basé sur les rôles (ADMIN, SECTOR_MANAGER, TECHNICIAN)
 
 ## 🌐 Configuration CORS
 

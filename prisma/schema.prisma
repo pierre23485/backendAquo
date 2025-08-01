@@ -8,6 +8,9 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  // Alternative pour SQLite (décommentez la ligne suivante et commentez les 2 lignes au-dessus)
+  // provider = "sqlite"
+  // url      = env("DATABASE_URL")
 }
 
 model User {
@@ -16,7 +19,7 @@ model User {
   email     String   @unique
   phone     String
   password  String
-  role      Role     @default(CONSUMER)
+  role      Role     @default(SECTOR_MANAGER)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -26,6 +29,10 @@ model User {
   households      Household[]
   sentNotifications Notification[]
   createdAlerts   Alert[]
+  sentmaintenanceReports SensorMaintenanceReport[]
+  systemSettings  SystemSettings[]
+  siteSettings    SiteSettings[]
+  refillReports   RefillReport[]
 
   @@map("users")
 }
@@ -51,6 +58,9 @@ model Site {
   waterLevels   WaterLevel[]
   maintenances  Maintenance[]
   alerts        Alert[]
+  sensors       Sensor[]
+  siteSettings  SiteSettings[]
+  refillReports RefillReport[]
 
   @@map("sites")
 }
@@ -159,11 +169,134 @@ model Alert {
   @@map("alerts")
 }
 
+model Sensor {
+  id            String   @id @default(cuid())
+  siteId        String
+  name          String
+  type          String
+  serialNumber  String   @unique
+  installedAt   DateTime @default(now())
+  isActive      Boolean  @default(true)
+  configuration SensorConfiguration?
+  diagnostics   SensorDiagnostic[]
+  maintenances  SensorMaintenanceReport[]
+
+  // Relations
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@map("sensors")
+}
+
+model SensorConfiguration {
+  id           String   @id @default(cuid())
+  sensorId     String   @unique
+  calibration  String   // JSON ou texte décrivant le calibrage
+  parameters   String   // JSON ou texte pour autres paramètres
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  sensor Sensor @relation(fields: [sensorId], references: [id])
+
+  @@map("sensor_configurations")
+}
+
+model SensorDiagnostic {
+  id            String   @id @default(cuid())
+  sensorId      String
+  batteryLevel  Float
+  signalStrength Float
+  lastChecked   DateTime @default(now())
+  status        String   // OK, WARNING, ERROR, etc.
+  details       String?  // Infos supplémentaires
+
+  // Relations
+  sensor Sensor @relation(fields: [sensorId], references: [id])
+
+  @@map("sensor_diagnostics")
+}
+
+model SensorMaintenanceReport {
+  id          String   @id @default(cuid())
+  sensorId    String
+  technicianId String
+  reportType  String   // maintenance, troubleshooting, calibration, etc.
+  summary     String
+  details     String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  sensor      Sensor @relation(fields: [sensorId], references: [id])
+  technician  User   @relation(fields: [technicianId], references: [id])
+
+  @@map("sensor_maintenance_reports")
+}
+
+// Modèle pour les rapports de recharge de citernes
+model RefillReport {
+  id              String   @id @default(cuid())
+  siteId          String
+  reportedById    String
+  refillDate      DateTime @default(now())
+  volumeRefilled  Float    // Volume en litres rechargé
+  previousLevel   Int?     // Niveau précédent en pourcentage (optionnel)
+  currentLevel    Int      // Niveau actuel en pourcentage après recharge
+  cost            Float?   // Coût de la recharge (optionnel)
+  supplier        String?  // Fournisseur/transporteur (optionnel)
+  notes           String?  // Notes additionnelles
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  site        Site @relation(fields: [siteId], references: [id])
+  reportedBy  User @relation(fields: [reportedById], references: [id])
+
+  @@map("refill_reports")
+}
+
+// Nouveau modèle pour les paramètres système globaux
+model SystemSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   // JSON string pour les objets complexes
+  description String?
+  category    String   @default("general") // general, alerts, notifications, maintenance
+  isActive    Boolean  @default(true)
+  updatedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  updatedBy User @relation(fields: [updatedById], references: [id])
+
+  @@map("system_settings")
+}
+
+// Nouveau modèle pour les paramètres spécifiques aux sites
+model SiteSettings {
+  id          String   @id @default(cuid())
+  siteId      String
+  key         String
+  value       String   // JSON string pour les objets complexes
+  description String?
+  category    String   @default("site") // site, alerts, maintenance
+  isActive    Boolean  @default(true)
+  updatedById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  site      Site @relation(fields: [siteId], references: [id])
+  updatedBy User @relation(fields: [updatedById], references: [id])
+
+  @@unique([siteId, key])
+  @@map("site_settings")
+}
+
 // Enums
 enum Role {
   ADMIN
   SECTOR_MANAGER
-  CONSUMER
+  TECHNICIAN
 }
 
 enum SiteStatus {
