@@ -17,6 +17,8 @@ import alertRoutes from './routes/alerts.js';
 import sensorsRouter from './routes/sensors.js';
 import settingsRoutes from './routes/settings.js';
 import refillReportsRoutes from './routes/refill-reports.js';
+import waterLevelsRoutes from './routes/water-levels.js';
+import sensorDataRoutes from './routes/sensor-data.js';
 
 // Import services
 import { startAlertMonitoring } from './services/alertMonitoringService.js';
@@ -138,6 +140,8 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/sensors', sensorsRouter);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/refill-reports', refillReportsRoutes);
+app.use('/api/water-levels', waterLevelsRoutes);
+app.use('/api/sensor-data', sensorDataRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
