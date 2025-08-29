@@ -92,7 +92,11 @@ router.get('/:siteId', authenticateToken, async (req, res) => {
 });
 
 // Get current water level for a site
-router.get('/:siteId/current', authenticateToken, async (req, res) => {
+router.get('/:siteId/current', (req, res, next) => {
+  console.log('Route /:siteId/current appelée avec siteId:', req.params.siteId);
+  console.log('Headers:', req.headers);
+  next();
+}, authenticateToken, async (req, res) => {
   try {
     const { siteId } = req.params;
 
